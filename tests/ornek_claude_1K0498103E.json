@@ -1,0 +1,129 @@
+{
+ "parca_adi": "Aks kafası iç (şanzıman tarafı, ön) – körük, bağlantı parçaları ve gresli homokinetik mafsal seti (VW orijinal no: 1K0498103E)",
+ "motor_parcasi": false,
+ "motor_kodlari": [
+  "CBEA",
+  "CJAA",
+  "BEW"
+ ],
+ "araclar": [
+  {
+   "marka": "Volkswagen",
+   "model": "Jetta V (A5)",
+   "hacim": "2.0 TDI",
+   "motor_kodlari": [
+    "CBEA",
+    "CJAA"
+   ],
+   "yil_bas": 2009,
+   "yil_bit": 2010,
+   "kasa": "Sedan, DSG / otomatik",
+   "kaynaklar": [
+    "https://www.idparts.com/joint-inner-gkna5-dsgmk-dsg-1k0498103e-305400-p-5880.html"
+   ]
+  },
+  {
+   "marka": "Volkswagen",
+   "model": "Jetta V (A5)",
+   "hacim": "1.9 TDI",
+   "motor_kodlari": [
+    "BEW"
+   ],
+   "yil_bas": 2005,
+   "yil_bit": 2009,
+   "kasa": "Sedan, otomatik, önden çekiş",
+   "kaynaklar": [
+    "https://www.fcpeuro.com/products/audi-vw-drive-shaft-cv-joint-kit-gkn-1k0498103e",
+    "https://www.europaparts.com/cv-joint-kit-1k0498103e.html"
+   ]
+  },
+  {
+   "marka": "Volkswagen",
+   "model": "Jetta VI",
+   "hacim": "2.0 TDI",
+   "motor_kodlari": [],
+   "yil_bas": 2010,
+   "yil_bit": 2015,
+   "kasa": "Sedan, otomatik",
+   "kaynaklar": [
+    "https://www.europaparts.com/cv-joint-kit-1k0498103e.html"
+   ]
+  },
+  {
+   "marka": "Volkswagen",
+   "model": "Golf VI",
+   "hacim": "2.0 TDI",
+   "motor_kodlari": [
+    "CJAA"
+   ],
+   "yil_bas": 2010,
+   "yil_bit": 2014,
+   "kasa": "Hatchback, DSG",
+   "kaynaklar": [
+    "https://www.idparts.com/joint-inner-gkna5-dsgmk-dsg-1k0498103e-305400-p-5880.html"
+   ]
+  },
+  {
+   "marka": "Volkswagen",
+   "model": "Jetta SportWagen (Golf Variant, ABD pazarı)",
+   "hacim": "2.0 TDI",
+   "motor_kodlari": [
+    "CBEA"
+   ],
+   "yil_bas": 2008,
+   "yil_bit": 2009,
+   "kasa": "Station wagon",
+   "kaynaklar": [
+    "https://www.hansautoparts.com/1K0498103EInnerCVJoint.aspx"
+   ]
+  },
+  {
+   "marka": "Audi",
+   "model": "A3 (8P)",
+   "hacim": "2.0 TDI",
+   "motor_kodlari": [
+    "CBEA"
+   ],
+   "yil_bas": 2009,
+   "yil_bit": 2013,
+   "kasa": "Önden çekiş, otomatik (S tronic)",
+   "kaynaklar": [
+    "https://www.hansautoparts.com/1K0498103EInnerCVJoint.aspx",
+    "https://www.europaparts.com/cv-joint-kit-1k0498103e.html"
+   ]
+  },
+  {
+   "marka": "Volkswagen",
+   "model": "Eos",
+   "hacim": "3.2 V6",
+   "motor_kodlari": [],
+   "yil_bas": 2007,
+   "yil_bit": 2009,
+   "kasa": "Cabrio",
+   "kaynaklar": [
+    "https://www.europaparts.com/cv-joint-kit-1k0498103e.html",
+    "https://www.fcpeuro.com/Volkswagen-parts/Eos/CV-Joint-Kit/"
+   ]
+  },
+  {
+   "marka": "Volkswagen",
+   "model": "Passat CC",
+   "hacim": "",
+   "motor_kodlari": [],
+   "yil_bas": 2009,
+   "yil_bit": 2012,
+   "kasa": "",
+   "kaynaklar": [
+    "https://www.hansautoparts.com/1K0498103EInnerCVJoint.aspx"
+   ]
+  }
+ ],
+ "esdeger_kodlar": [
+  "1K0498103Q (bir kaynakta alternatif OE olarak geçiyor, ayrı ekli kod – doğrulanmalı)",
+  "GKN 305400",
+  "Febest 2311-CCLH",
+  "Marelli 1K0498103EMM",
+  "Vaico 1K0498103E (Vaico ürün no'su OE ile aynı)"
+ ],
+ "notlar": "Parça nedir: 1K0498103E, VW grubu araçlarda ön aksın şanzıman tarafındaki İÇ aks kafası (homokinetik mafsal) setidir. Körük, bağlantı parçaları ve gres sette gelir. Bu bir motor parçası değil, aktarma organı parçasıdır. Tabloya yazılan motor kodları yalnızca kaynaklarda araç uygulaması olarak geçenlerdir. Ölçü: diferansiyel tarafı 34 diş, yaklaşık 100 mm (Amazon ilanı '34X100', piecesdiscount24 '34 diş'). Oemwolf'a göre set 7 parçadan oluşuyor; içinde iç körük 1J0407283AE ve 1J0407363E kodlu bir parça var. VW tarafında yerine başka bir kod gelmiş (supersede). 2003–2015 yılları arasında 59 VW grubu araçta kullanılmış; marka olarak Audi, Seat, Skoda ve VW sayılıyor. Oemwolf'un araç listesini tek tek göremedim, çünkü sayfa açılmadı.\nÖNEMLİ UYARILAR:\n1) Kodun biçiminden tahmin edilen 'Golf V / Jetta V' kısmen doğrulandı. Jetta V (A5) TDI otomatik/DSG için iki bağımsız kaynak var: idparts ile europaparts/FCP. Golf V (1K1) için 1K0498103E'yi açıkça yazan bir kaynak bulamadım; listeye o yüzden eklemedim. Kaynaklarda Golf VI 2.0 TDI CJAA DSG geçiyor.\n2) Kaynakların çoğu ABD pazarı satıcıları ve parçayı genelde OTOMATİK/DSG şanzımanlı TDI araçlar için gösteriyor (idparts başlığı: 'A5 DSG, Mk6 DSG'). Manuel şanzımanlı araçlarda farklı ekli kodlar (1K0498103, 103B, 103L, 103Q, 103AX, 103GV vb.) kullanılabilir. Bunlar FARKLI parçalardır, bilgileri bu koda aktarılmadı.\n3) FCP Euro notuna göre parça, 2010 Jetta TDI CJAA'da yalnızca körüğü 1J0407283AE veya 4E0407283 olan aks varyantlarında kullanılıyor. Yani aynı araçta bile aks varyantına göre değişiyor.\n4) Bay.parts sayfasında Marelli muadili 'Golf IV, Passat, Caddy DSG 6 ileri' olarak geçiyor; bu bilgi doğrulanamadı.\n5) Passat CC için tek kaynak var (hansautoparts). Motor ve kasa bilgisi yok. Passat B6/B7 için bu koda ait kaynak bulamadım. Tiguan yalnızca eksiz 1K0498103 kodunda geçiyor, bu koda eklenmedi.\n6) Eos 3.2 V6 için motor kodu kaynaklarda yazmıyor.\nSatıştan önce şase numarasıyla (VIN) ETKA'dan veya parça kataloğundan kontrol edilmesi önerilir. Sayfaların çoğu proxy engeli yüzünden açılamadı; bilgiler arama motoru özetlerinden alındı."
+}
