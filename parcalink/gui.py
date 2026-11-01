@@ -1,238 +1,295 @@
-"""ParçaLink masaüstü penceresi (PySide6)."""
-import html
+"""ParçaLink masaüstü penceresi (PySide6). İnternet ve ücretli servis gerekmez."""
 import sys
+import webbrowser
+from urllib.parse import quote_plus
 
-from PySide6.QtCore import QObject, QThread, Qt, Signal
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QColor, QGuiApplication
-from PySide6.QtWidgets import (QAbstractItemView, QApplication, QDialog, QDialogButtonBox, QHBoxLayout, QHeaderView,
-                               QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton, QSplitter, QTableWidget,
-                               QTableWidgetItem, QTextBrowser, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QAbstractItemView, QApplication, QDialog, QDialogButtonBox, QFileDialog, QHBoxLayout,
+                               QHeaderView, QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton, QSpinBox,
+                               QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget)
 
-from . import ayarlar, arama, kurallar
-from .birlestir import SUTUNLAR, kopyala_metni, oem_satirlari
+from . import ayarlar, kurallar
+from .birlestir import (KAYITLI, METIN_SUTUNLARI, SUTUNLAR, birlestir, excel_satiri, kayitli_satirlar,
+                        kopyala_metni, satirdan_arac, tahmin_satirlari)
+from .depo import Depo
 from .veri import AracListesi
 
-SURUM = "0.1"
-METIN_SUTUNLARI = ["OEM kodu", "Açıklama", "Araçlar", "Motor", "Kaynak"]
-RENK = {"Doğrulandı": "#e5f4e4", "Kaynakta var": "#e7f1fb", "Motor kodundan": "#f9eeda", "Kontrol edin": "#fbebeb"}
+SURUM = "0.2"
+RENK_KAYITLI, RENK_TAHMIN = "#e5f4e4", "#f9eeda"
 
 
-class Isci(QObject):
-    bitti = Signal(dict)
-    hata = Signal(str)
-
-    def __init__(self, sorgu, liste, yenile=False):
-        super().__init__()
-        self.sorgu, self.liste, self.yenile = sorgu, liste, yenile
-
-    def calis(self):
-        try:
-            self.bitti.emit(ara(self.sorgu, self.liste, self.yenile))
-        except arama.AramaHatasi as e:
-            self.hata.emit(str(e))
-        except Exception as e:  # beklenmeyen hata programı kapatmasın
-            self.hata.emit(f"Beklenmeyen hata: {e}")
-
-
-def ara(sorgu, liste, yenile=False):
-    """Arayüzden bağımsız arama: {'tur': 'oem'|'metin', ...}."""
-    anahtar_api = ayarlar.api_anahtari()
-    if kurallar.oem_gibi_mi(sorgu):
-        kod = kurallar.kod_normal(sorgu)
-        ok = "oem:" + kod
-        veri = None if yenile else ayarlar.onbellekten(ok)
-        ipucu = kurallar.ipucu(kod)
-        if veri is None:
-            sonuc, adresler = arama.oem_ara(anahtar_api, kod, ipucu)
-            veri = {"sonuc": sonuc.model_dump(), "adresler": adresler}
-            ayarlar.onbellege(ok, veri)
-            onbellek = False
-        else:
-            onbellek = True
-        sonuc = arama.OemSonuc.model_validate(veri["sonuc"])
-        return {"tur": "oem", "kod": kod, "ipucu": ipucu, "sonuc": sonuc, "satirlar": oem_satirlari(sonuc, liste),
-                "adresler": veri["adresler"], "onbellek": onbellek}
-    ok = "metin:" + " ".join(sorgu.lower().split())
-    veri = None if yenile else ayarlar.onbellekten(ok)
-    onbellek = veri is not None
-    if veri is None:
-        sonuc, adresler = arama.metin_ara(anahtar_api, sorgu)
-        veri = {"sonuc": sonuc.model_dump(), "adresler": adresler}
-        ayarlar.onbellege(ok, veri)
-    sonuc = arama.MetinSonuc.model_validate(veri["sonuc"])
-    satirlar = [{"OEM kodu": b.oem_kodu, "Açıklama": b.aciklama, "Araçlar": b.araclar, "Motor": b.motor,
-                 "Kaynak": b.kaynaklar[0] if b.kaynaklar else ""} for b in sonuc.sonuclar]
-    return {"tur": "metin", "sonuc": sonuc, "satirlar": satirlar, "adresler": veri["adresler"], "onbellek": onbellek}
+def tabloya_yaz(tablo, sutunlar, satirlar, isaret=False):
+    tablo.setSortingEnabled(False)
+    tablo.clear()
+    tablo.setColumnCount(len(sutunlar) + (1 if isaret else 0))
+    tablo.setHorizontalHeaderLabels((["Seç"] if isaret else []) + sutunlar)
+    tablo.setRowCount(len(satirlar))
+    for i, r in enumerate(satirlar):
+        if isaret:
+            it = QTableWidgetItem()
+            it.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+            it.setCheckState(Qt.Checked if r.get("_secili", True) else Qt.Unchecked)
+            tablo.setItem(i, 0, it)
+        for j, c in enumerate(sutunlar):
+            it = QTableWidgetItem(str(r.get(c, "") or ""))
+            it.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
+            if r.get("Durum"):
+                it.setBackground(QColor(RENK_KAYITLI if r["Durum"] == KAYITLI else RENK_TAHMIN))
+            tablo.setItem(i, j + (1 if isaret else 0), it)
+    tablo.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+    tablo.horizontalHeader().setStretchLastSection(True)
+    tablo.setSortingEnabled(not isaret)
 
 
-class AyarPenceresi(QDialog):
-    def __init__(self, ust):
+class KayitPenceresi(QDialog):
+    """Bir OEM kodunu uyan araçlarıyla kaydetme / düzenleme."""
+
+    def __init__(self, ust, depo, liste, kod, mevcut=None, oneriler=None):
         super().__init__(ust)
-        self.setWindowTitle("Ayarlar")
+        self.depo, self.liste, self.kod = depo, liste, kurallar.kod_normal(kod)
+        self.setWindowTitle(f"Kaydet: {self.kod}")
+        self.resize(1150, 680)
+        self.adaylar = []  # tablo satırları
         y = QVBoxLayout(self)
-        y.addWidget(QLabel("Anthropic API anahtarı (sadece bu bilgisayarda saklanır):"))
-        self.anahtar = QLineEdit(ayarlar.api_anahtari())
-        self.anahtar.setEchoMode(QLineEdit.Password)
-        self.anahtar.setMinimumWidth(420)
-        y.addWidget(self.anahtar)
-        sil = QPushButton("Kayıtlı aramaları (önbelleği) temizle")
-        sil.clicked.connect(lambda: (ayarlar.onbellek_sil(), QMessageBox.information(self, "ParçaLink", "Önbellek temizlendi.")))
-        y.addWidget(sil)
+
+        s1 = QHBoxLayout()
+        s1.addWidget(QLabel("Parça adı:"))
+        self.ad = QLineEdit(mevcut["ad"] if mevcut else "")
+        self.ad.setPlaceholderText("ör. Emme manifoldu, triger seti, cam düğmesi")
+        s1.addWidget(self.ad, 1)
+        y.addLayout(s1)
+
+        s2 = QHBoxLayout()
+        s2.addWidget(QLabel("Motor kodları:"))
+        self.motor = QLineEdit()
+        self.motor.setPlaceholderText("ETKA'daki motor kodları, virgülle: CLHA, CRBC, DDYA")
+        s2.addWidget(self.motor, 1)
+        b = QPushButton("Excel'den getir")
+        b.clicked.connect(self.motordan)
+        s2.addWidget(b)
+        y.addLayout(s2)
+
+        s3 = QHBoxLayout()
+        s3.addWidget(QLabel("veya model:"))
+        self.model = QLineEdit()
+        self.model.setPlaceholderText("ör. Golf, Octavia, Crafter, C Serisi")
+        s3.addWidget(self.model, 1)
+        s3.addWidget(QLabel("yıl"))
+        self.yil1, self.yil2 = QSpinBox(), QSpinBox()
+        for sp, v in ((self.yil1, 1980), (self.yil2, 2026)):
+            sp.setRange(1980, 2030)
+            sp.setValue(v)
+            s3.addWidget(sp)
+        b2 = QPushButton("Listele")
+        b2.clicked.connect(self.modelden)
+        s3.addWidget(b2)
+        y.addLayout(s3)
+
+        y.addWidget(QLabel("İşaretli araçlar kaydedilir. Yanlış olanların işaretini kaldırın."))
+        self.tablo = QTableWidget()
+        self.tablo.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        y.addWidget(self.tablo, 1)
+
+        s4 = QHBoxLayout()
+        for ad, f in (("Hepsini işaretle", lambda: self.isaretle(True)), ("İşaretleri kaldır", lambda: self.isaretle(False))):
+            bb = QPushButton(ad)
+            bb.clicked.connect(f)
+            s4.addWidget(bb)
+        s4.addStretch(1)
+        y.addLayout(s4)
+        self.notlar = QLineEdit(mevcut["notlar"] if mevcut else "")
+        self.notlar.setPlaceholderText("Not (isteğe bağlı), ör. sadece manuel klimalı araçlar")
+        y.addWidget(self.notlar)
         d = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
         d.accepted.connect(self.kaydet)
         d.rejected.connect(self.reject)
         y.addWidget(d)
 
+        if mevcut:
+            self.ekle([dict(r, _secili=True) for r in kayitli_satirlar(mevcut)])
+        elif oneriler:
+            self.ekle([dict(r, _secili=False) for r in oneriler])
+
+    def _isaretler(self):
+        for i, r in enumerate(self.adaylar):
+            it = self.tablo.item(i, 0)
+            if it is not None:
+                r["_secili"] = it.checkState() == Qt.Checked
+
+    def ekle(self, satirlar):
+        self._isaretler()
+        var = {(r["Marka"], r["Model"], r["Kasa"], r["Motor kodu"], r["Yıllar"]) for r in self.adaylar}
+        for r in satirlar:
+            k = (r["Marka"], r["Model"], r["Kasa"], r["Motor kodu"], r["Yıllar"])
+            if k not in var:
+                self.adaylar.append(r)
+                var.add(k)
+        tabloya_yaz(self.tablo, SUTUNLAR[:-1], self.adaylar, isaret=True)
+
+    def motordan(self):
+        yeni = []
+        for k in [x.strip().upper() for x in self.motor.text().replace(";", ",").split(",") if x.strip()]:
+            bulunan = self.liste.motor_kodu_ile(k)
+            if not bulunan:
+                QMessageBox.information(self, "ParçaLink", f"{k} motor kodu araç listesinde yok.")
+            yeni += [dict(excel_satiri(s, k), _secili=True) for s in bulunan]
+        self.ekle(birlestir(yeni))
+
+    def modelden(self):
+        if not self.model.text().strip():
+            return
+        m = self.model.text().strip()
+        marka = ""
+        for mk in ("Volkswagen", "Seat", "Skoda", "Audi", "Porsche", "Mercedes-Benz", "Smart"):
+            if m.lower().startswith(mk.lower() + " "):
+                marka, m = mk, m[len(mk) + 1:]
+        bulunan = self.liste.model_ile(marka, m, self.yil1.value(), self.yil2.value())
+        if not bulunan:
+            QMessageBox.information(self, "ParçaLink", "Bu model ve yıllarda araç bulunamadı.")
+        self.ekle(birlestir([dict(excel_satiri(s), _secili=False) for s in bulunan]))
+
+    def isaretle(self, deger):
+        for i in range(self.tablo.rowCount()):
+            self.tablo.item(i, 0).setCheckState(Qt.Checked if deger else Qt.Unchecked)
+
     def kaydet(self):
-        ayarlar.api_anahtari_kaydet(self.anahtar.text())
+        self._isaretler()
+        secili = [satirdan_arac(r) for r in self.adaylar if r.get("_secili")]
+        if not secili:
+            QMessageBox.warning(self, "ParçaLink", "En az bir aracı işaretleyin.")
+            return
+        self.depo.kaydet(self.kod, self.ad.text().strip(), secili, self.notlar.text().strip())
         self.accept()
 
 
 class Pencere(QMainWindow):
-    def __init__(self):
+    def __init__(self, depo=None):
         super().__init__()
         self.setWindowTitle(f"ParçaLink {SURUM}")
         self.resize(1250, 760)
         self.liste = AracListesi()
+        self.depo = depo or Depo(ayarlar.depo_yolu())
         self.son = None
-        self.thread = None
 
         orta = QWidget()
         y = QVBoxLayout(orta)
         ust = QHBoxLayout()
         self.kutu = QLineEdit()
-        self.kutu.setPlaceholderText("OEM kodu yazın (ör. 04L129766N) ya da araç ve parça (ör. Caddy motor triger)")
+        self.kutu.setPlaceholderText("OEM kodu yazın (ör. 04L129766N) ya da parça ve araç (ör. Caddy triger)")
         self.kutu.setMinimumHeight(38)
-        self.kutu.returnPressed.connect(lambda: self.baslat(False))
-        self.ara_dugme = QPushButton("Ara")
-        self.ara_dugme.setMinimumHeight(38)
-        self.ara_dugme.clicked.connect(lambda: self.baslat(False))
-        self.yenile_dugme = QPushButton("İnternetten yenile")
-        self.yenile_dugme.setToolTip("Kayıtlı sonucu kullanmadan yeniden ara")
-        self.yenile_dugme.clicked.connect(lambda: self.baslat(True))
-        ayar = QPushButton("Ayarlar")
-        ayar.clicked.connect(lambda: AyarPenceresi(self).exec())
-        for w in (self.kutu, self.ara_dugme, self.yenile_dugme, ayar):
-            ust.addWidget(w)
-        ust.setStretch(0, 1)
+        self.kutu.returnPressed.connect(self.ara)
+        b = QPushButton("Ara")
+        b.setMinimumHeight(38)
+        b.clicked.connect(self.ara)
+        ust.addWidget(self.kutu, 1)
+        ust.addWidget(b)
         y.addLayout(ust)
 
-        self.bilgi = QLabel("Bir OEM kodu veya araç ve parça adı yazıp Ara'ya basın.")
+        self.bilgi = QLabel("Bir OEM kodu yazıp Ara'ya basın. Kayıtlı kodlar kesin, kayıtsız kodlar tahmin olarak gelir.")
         self.bilgi.setWordWrap(True)
         self.bilgi.setTextInteractionFlags(Qt.TextSelectableByMouse)
         y.addWidget(self.bilgi)
 
-        bol = QSplitter(Qt.Vertical)
         self.tablo = QTableWidget(0, len(SUTUNLAR))
         self.tablo.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.tablo.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.tablo.setSortingEnabled(True)
         self.tablo.cellDoubleClicked.connect(self.cift_tik)
-        bol.addWidget(self.tablo)
-        self.kaynaklar = QTextBrowser()
-        self.kaynaklar.setOpenExternalLinks(True)
-        bol.addWidget(self.kaynaklar)
-        bol.setSizes([520, 160])
-        y.addWidget(bol)
+        y.addWidget(self.tablo, 1)
 
         alt = QHBoxLayout()
+        self.kaydet_d = QPushButton("Kaydet / düzenle")
+        self.kaydet_d.clicked.connect(self.kayit)
+        self.google_d = QPushButton("Google'da ara")
+        self.google_d.clicked.connect(self.google)
         k1 = QPushButton("Tümünü kopyala")
         k1.clicked.connect(lambda: self.kopyala(False))
         k2 = QPushButton("Seçilileri kopyala")
         k2.clicked.connect(lambda: self.kopyala(True))
-        self.aciklama = QLabel("Renkler: yeşil = en az 2 kaynakta doğrulandı, mavi = kaynakta var, "
-                               "sarı = sadece motor kodundan, kırmızı = kontrol edin. Kesin uyum için ETKA ile kontrol edin.")
-        self.aciklama.setWordWrap(True)
-        alt.addWidget(k1)
-        alt.addWidget(k2)
-        alt.addWidget(self.aciklama, 1)
+        d1 = QPushButton("Kayıtları Excel'e aktar")
+        d1.clicked.connect(self.disa)
+        d2 = QPushButton("Excel'den kayıt al")
+        d2.clicked.connect(self.ice)
+        for w in (self.kaydet_d, self.google_d, k1, k2):
+            alt.addWidget(w)
+        alt.addStretch(1)
+        alt.addWidget(d1)
+        alt.addWidget(d2)
         y.addLayout(alt)
+        y.addWidget(QLabel("Yeşil = kayıtlı (sizin onayınızla). Sarı = kodun başından tahmin, ETKA'dan kontrol edip kaydedin."))
         self.setCentralWidget(orta)
         kop = QAction("Kopyala", self)
         kop.setShortcut("Ctrl+C")
         kop.triggered.connect(lambda: self.kopyala(True))
         self.addAction(kop)
-        self.statusBar().showMessage(f"Araç listesi yüklendi: {len(self.liste.satirlar)} satır.")
+        self.durum()
+
+    def durum(self, ek=""):
+        self.statusBar().showMessage(f"Araç listesi: {len(self.liste.satirlar)} satır. Kayıtlı parça: {self.depo.sayi()}."
+                                     + (f" {ek}" if ek else ""))
 
     # ---- arama ----
-    def baslat(self, yenile):
+    def ara(self):
         sorgu = self.kutu.text().strip()
-        if not sorgu or self.thread is not None:
+        if not sorgu:
             return
-        if not ayarlar.api_anahtari():
-            QMessageBox.warning(self, "ParçaLink", "Önce Ayarlar'dan API anahtarınızı girin.")
-            return
-        self.ara_dugme.setEnabled(False)
-        self.yenile_dugme.setEnabled(False)
-        self.statusBar().showMessage("Aranıyor… (internet araması 30–90 saniye sürebilir)")
-        self.thread = QThread()
-        self.isci = Isci(sorgu, self.liste, yenile)
-        self.isci.moveToThread(self.thread)
-        self.thread.started.connect(self.isci.calis)
-        self.isci.bitti.connect(self.goster)
-        self.isci.hata.connect(self.hata)
-        self.isci.bitti.connect(self.thread.quit)
-        self.isci.hata.connect(self.thread.quit)
-        self.thread.finished.connect(self.temizle)
-        self.thread.start()
-
-    def temizle(self):
-        self.thread.deleteLater()
-        self.thread = None
-        self.ara_dugme.setEnabled(True)
-        self.yenile_dugme.setEnabled(True)
-
-    def hata(self, mesaj):
-        self.statusBar().showMessage("Arama yapılamadı.")
-        QMessageBox.warning(self, "ParçaLink", mesaj)
-
-    def goster(self, s):
-        self.son = s
-        sutunlar = SUTUNLAR if s["tur"] == "oem" else METIN_SUTUNLARI
-        self.tablo.setSortingEnabled(False)
-        self.tablo.clear()
-        self.tablo.setColumnCount(len(sutunlar))
-        self.tablo.setHorizontalHeaderLabels(sutunlar)
-        self.tablo.setRowCount(len(s["satirlar"]))
-        for i, r in enumerate(s["satirlar"]):
-            for j, c in enumerate(sutunlar):
-                it = QTableWidgetItem(str(r.get(c, "")))
-                if s["tur"] == "oem" and r.get("Güven") in RENK:
-                    it.setBackground(QColor(RENK[r["Güven"]]))
-                self.tablo.setItem(i, j, it)
-        self.tablo.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-        self.tablo.horizontalHeader().setStretchLastSection(True)
-        self.tablo.setSortingEnabled(True)
-
-        sonuc = s["sonuc"]
-        if s["tur"] == "oem":
-            ip = s["ipucu"]
-            parca = [f"<b>{html.escape(s['kod'])}</b>: {html.escape(sonuc.parca_adi)}"]
-            if sonuc.motor_parcasi:
-                parca.append("motor parçası")
-            if ip.get("arac"):
-                parca.append(f"kod ipucu: {html.escape(ip['arac'])}")
-            if ip.get("motor_ailesi"):
-                parca.append(f"motor ailesi: {html.escape(ip['motor_ailesi'])}")
-            if sonuc.esdeger_kodlar:
-                parca.append("eşdeğer / benzer kodlar: " + html.escape(", ".join(sonuc.esdeger_kodlar)))
-            metin = " · ".join(parca)
+        if kurallar.oem_gibi_mi(sorgu):
+            self.kod_goster(kurallar.kod_normal(sorgu))
         else:
-            metin = f"<b>{html.escape(sonuc.arac)}</b>, {html.escape(sonuc.parca)}: {len(s['satirlar'])} kod bulundu. " \
-                    "Bir koda çift tıklayınca o kodun uyduğu araçlar aranır."
-        if sonuc.notlar:
-            metin += f"<br><i>Not: {html.escape(sonuc.notlar)}</i>"
+            satirlar = self.depo.metinle_ara(sorgu)
+            self.son = {"tur": "metin", "satirlar": satirlar, "sutunlar": METIN_SUTUNLARI}
+            tabloya_yaz(self.tablo, METIN_SUTUNLARI, satirlar)
+            self.bilgi.setText(f"“{sorgu}” için kayıtlı parçalarda {len(satirlar)} sonuç. Bir koda çift tıklayınca açılır."
+                               if satirlar else f"“{sorgu}” kayıtlı parçalarda bulunamadı. OEM kodunu biliyorsanız kodla arayın.")
+            self.kaydet_d.setEnabled(False)
+
+    def kod_goster(self, kod):
+        self.kaydet_d.setEnabled(True)
+        parca = self.depo.getir(kod)
+        ip = kurallar.ipucu(kod)
+        benzer = self.depo.benzer(kod)
+        if parca:
+            satirlar = kayitli_satirlar(parca)
+            metin = f"<b>{kod}</b>: {parca['ad'] or 'parça'} – kayıtlı, {len(satirlar)} araç ({parca['tarih']})."
+            if parca["notlar"]:
+                metin += f"<br><i>Not: {parca['notlar']}</i>"
+        else:
+            satirlar = tahmin_satirlari(ip, self.liste)
+            metin = f"<b>{kod}</b> kayıtlı değil."
+            if ip["arac"]:
+                metin += f" Kodun başına göre tahmin: <b>{ip['arac']}</b> ({len(satirlar)} motor seçeneği aşağıda)."
+            else:
+                metin += " Kodun başından araç tahmin edilemedi."
+            metin += " ETKA'dan kontrol edip <b>Kaydet</b> ile kaydedin."
+        if ip["motor_ailesi"]:
+            metin += f"<br>Motor ailesi: {ip['motor_ailesi']}."
+        if benzer:
+            metin += "<br>Benzer kayıtlı kodlar (farklı ek): " + ", ".join(benzer)
+        self.son = {"tur": "kod", "kod": kod, "satirlar": satirlar, "sutunlar": SUTUNLAR, "parca": parca}
+        tabloya_yaz(self.tablo, SUTUNLAR, satirlar)
         self.bilgi.setText(metin)
-        adresler = s["adresler"]
-        self.kaynaklar.setHtml("<b>İncelenen kaynaklar</b><br>" + "<br>".join(
-            f'<a href="{html.escape(a)}">{html.escape(a)}</a>' for a in adresler) if adresler else "Kaynak yok.")
-        self.statusBar().showMessage(f"{len(s['satirlar'])} satır" + (" (kayıtlı sonuç)" if s["onbellek"] else ""))
+        self.durum()
 
     def cift_tik(self, satir, sutun):
         if self.son and self.son["tur"] == "metin":
             kod = self.tablo.item(satir, 0).text()
             self.kutu.setText(kod)
-            self.baslat(False)
+            self.kod_goster(kod)
+
+    def kayit(self):
+        if not self.son or self.son["tur"] != "kod":
+            QMessageBox.information(self, "ParçaLink", "Önce bir OEM kodu arayın.")
+            return
+        s = self.son
+        p = KayitPenceresi(self, self.depo, self.liste, s["kod"], s["parca"], None if s["parca"] else s["satirlar"])
+        if p.exec():
+            self.kod_goster(s["kod"])
+            self.durum("Kaydedildi.")
+
+    def google(self):
+        q = self.son["kod"] if self.son and self.son["tur"] == "kod" else self.kutu.text().strip()
+        if q:
+            webbrowser.open("https://www.google.com/search?q=" + quote_plus(q))
 
     def kopyala(self, secili):
         if not self.son:
@@ -241,10 +298,21 @@ class Pencere(QMainWindow):
         satirlar = sorted({i.row() for i in self.tablo.selectedIndexes()}) if secili else range(self.tablo.rowCount())
         veri = [{c: (self.tablo.item(i, j).text() if self.tablo.item(i, j) else "") for j, c in enumerate(sutunlar)}
                 for i in satirlar]
-        if not veri:
-            return
-        QGuiApplication.clipboard().setText(kopyala_metni(veri, sutunlar))
-        self.statusBar().showMessage(f"{len(veri)} satır kopyalandı. Excel'e veya WhatsApp'a yapıştırabilirsiniz.")
+        if veri:
+            QGuiApplication.clipboard().setText(kopyala_metni(veri, sutunlar))
+            self.durum(f"{len(veri)} satır kopyalandı.")
+
+    def disa(self):
+        yol, _ = QFileDialog.getSaveFileName(self, "Kayıtları Excel'e aktar", "ParcaLink_kayitlar.xlsx", "Excel (*.xlsx)")
+        if yol:
+            self.depo.disa_aktar(yol)
+            self.durum("Excel'e aktarıldı.")
+
+    def ice(self):
+        yol, _ = QFileDialog.getOpenFileName(self, "Excel'den kayıt al", "", "Excel (*.xlsx)")
+        if yol:
+            n = self.depo.ice_aktar(yol)
+            self.durum(f"{n} parça alındı.")
 
 
 def main():

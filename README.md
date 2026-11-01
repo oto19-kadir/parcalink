@@ -3,19 +3,23 @@
 Windows masaüstü programı (.exe). Parça kodu yazılır, program o parçanın hangi araçlara uyduğunu gösterir
 (marka, model, kasa, motor kodu, yıllar).
 
-Durum: **ilk sürüm (0.1), deneme.**
+Durum: **sürüm 0.2, deneme.** İnternet, ödeme veya API anahtarı gerekmez.
 
 ## Nasıl çalışır
-- OEM kodu yazılır → Claude internette arar → bulunan motor kodları `veri/Arac_Listesi.xlsx` ile eşleşir →
-  tabloda marka, model, kasa, hacim, motor kodu, beygir, yakıt, şanzıman, yıllar, güven derecesi ve kaynak.
-- "Caddy motor triger" gibi yazılırsa OEM kodları listelenir; bir koda çift tıklayınca uyan araçlar aranır.
-- Sonuçlar 30 gün bilgisayarda saklanır (tekrar aramak ücretsiz ve anında); "İnternetten yenile" yeniden arar.
-- Tablo "Tümünü kopyala" ile Excel'e / WhatsApp'a yapıştırılabilir.
+- OEM kodu yazılır. **Kayıtlıysa** (yeşil) uyan araçlar kesin gelir: marka, model, kasa, hacim, motor kodu,
+  beygir, yakıt, şanzıman, yıllar.
+- **Kayıtlı değilse** (sarı) kodun başından tahmin gelir (ör. 2E0 = Crafter, 5E0 = Octavia III) ve o aracın Excel'deki
+  motor seçenekleri listelenir. ETKA'dan kontrol edip **Kaydet / düzenle** ile kaydedilir.
+- Kaydederken motor kodları yazılır (CLHA, CRBC…) → araçlar, hacim, beygir, yıllar `veri/Arac_Listesi.xlsx`'ten
+  otomatik gelir; ya da model adıyla listelenip işaretlenir.
+- "Caddy triger" gibi yazılınca kayıtlı parçalarda arar. "Google'da ara" kodu tarayıcıda aratır.
+- Tablo "Tümünü kopyala" / Ctrl+C ile Excel'e veya WhatsApp'a yapıştırılır.
+- Kayıtlar bilgisayarda `%APPDATA%\ParcaLink\parcalar.db` dosyasında; "Kayıtları Excel'e aktar" / "Excel'den kayıt al"
+  ile başka bilgisayara taşınır.
 
 ## Exe'yi indirme
 GitHub'da **Actions → ParçaLink exe** → en son başarılı çalıştırma → **Artifacts → ParcaLink-exe** (zip içinde
-`ParcaLink.exe`). Masaüstüne koyup çift tıklayın. İlk açılışta **Ayarlar**'dan Anthropic API anahtarını girin
-(anahtar sadece o bilgisayarda, `%APPDATA%\ParcaLink` içinde saklanır).
+`ParcaLink.exe`). Masaüstüne koyup çift tıklayın.
 
 ## Geliştirme
 ```
