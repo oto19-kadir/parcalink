@@ -61,3 +61,4 @@ Parça işini kolaylaştıran, ticari olarak satılabilecek Windows masaüstü p
 ## Yapılanlar
 - 1 Kasım 2026: Depo açıldı (gizli), kurallar ve plan yazıldı.
 - 1 Kasım 2026: Kullanıcı cevapları işlendi, yapı ve aşamalar yazıldı.
+- 1 Kasım 2026: Doğruluk denemesi 1 (7 kod): model %73, motor kodu %17 – ayrıntı `docs/test-1.md`.
