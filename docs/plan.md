@@ -17,6 +17,7 @@ Parça işini kolaylaştıran, ticari olarak satılabilecek Windows masaüstü p
 - Birkaç bilgisayar; ileride ticari satış düşünülüyor.
 - Arkada bir yapay zekâ modeli çalışacak.
 - Uyan araçlar kopyalanabilecek.
+- **Sonuçta her zaman yıllar yazar** (marka, model, kasa, yıllar). **Motor parçasıysa** ek olarak motor kodu ve motor hacmi (1.6 / 2.0 vb.) yazar; aynı modelin hangi motoruna uyduğu ayrılır.
 - **Web sitesi değil, masaüstü programı** (kendi penceresi olan .exe). Arka plandaki sunucu kullanıcıya görünmez; sadece anahtarları ve lisansı tutar.
 
 ## Nasıl çalışacak (önerilen yapı)
@@ -53,7 +54,7 @@ Parça işini kolaylaştıran, ticari olarak satılabilecek Windows masaüstü p
 4. **Ticari hazırlık:** lisans ve bilgisayar sınırı, güncelleme, kullanım sözleşmesi.
 
 ## Açık sorular
-1. Doğruluk denemesi için uyumunu kesin bildiğiniz **10 OEM kodu** ve uyan araçları.
+1. Doğruluk denemesi için (gelen: 5G0959855 – Golf 7, Passat B8, Tiguan 2; en az 9 kod daha, motor parçaları dahil) uyumunu kesin bildiğiniz **10 OEM kodu** ve uyan araçları.
 2. Sunucu nerede olacak? (Kartal için alınacak hosting ayrı projedir; ParçaLink için ayrı karar.)
 3. Arama servisi ve yapay zekâ hesapları kullanıcı adına açılacak; anahtarları sadece kullanıcı sunucuya girer.
 
