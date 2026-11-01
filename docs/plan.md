@@ -17,6 +17,7 @@ Parça işini kolaylaştıran, ticari olarak satılabilecek Windows masaüstü p
 - Birkaç bilgisayar; ileride ticari satış düşünülüyor.
 - Arkada bir yapay zekâ modeli çalışacak.
 - Uyan araçlar kopyalanabilecek.
+- **Web sitesi değil, masaüstü programı** (kendi penceresi olan .exe). Arka plandaki sunucu kullanıcıya görünmez; sadece anahtarları ve lisansı tutar.
 
 ## Nasıl çalışacak (önerilen yapı)
 ```
