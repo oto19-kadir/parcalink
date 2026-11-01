@@ -1,15 +1,61 @@
 # ParçaLink – plan (1 Kasım 2026)
 
 ## Hedef
-Parça kodu yaz → bu parçanın uyduğu araçlar: marka, model, kasa kodu, motor kodu, beygir, yakıt, şanzıman, yıllar.
-Windows masaüstünde çalışan .exe.
+Parça işini kolaylaştıran, ticari olarak satılabilecek Windows masaüstü programı (.exe), birkaç bilgisayarda çalışır.
 
-## Açık sorular (kullanıcı cevaplayacak)
-1. **Uyumluluk verisi nereden gelecek?** Kullanıcının Excel/listesi (parça kodu → araç) mı, tedarikçi servisi (ör. Başbuğ) mı, TecDoc gibi ücretli katalog mu?
-2. **Hangi kod yazılacak?** OEM numarası, kendi stok kodu, tedarikçi kodu ya da hepsi.
-3. **İnternet:** Program internetsiz mi çalışsın (veri programın içinde), yoksa her aramada güncel veriyi internetten mi alsın?
-4. **Kim kullanacak?** Sadece dükkân bilgisayarı mı, birden fazla bilgisayar mı?
-5. **Ek özellikler:** Araçtan parçaya ters arama, sonucu yazdırma veya Excel'e aktarma, WhatsApp'a gönderme isteniyor mu?
+İki arama yönü:
+1. **OEM kodu → uyan araçlar.** OEM kodu yazılır (ör. 5G0959855), program parçanın uyduğu araçları getirir:
+   marka, model, kasa, motor kodu, beygir, yakıt, şanzıman, yıllar. Liste tek tuşla kopyalanır.
+2. **Araç + parça adı → OEM kodu.** "Caddy motor triger" gibi yazılır, program o aracın o parçasının OEM kodunu
+   (kodlarını) getirir.
+
+## Kullanıcının cevapları (1 Kasım 2026)
+- Bilgi kaynağı: parça kodu internette bir arama motorunda aranacak.
+- Araç ve motor kodu, Claude'un hazırladığı araç Excel'inden (Arac_Listesi.xlsx) bulunup eşleştirilecek.
+- Yazılacak kod: OEM kodu.
+- İnternet: veriyi doğru getirecekse internetle çalışabilir.
+- Birkaç bilgisayar; ileride ticari satış düşünülüyor.
+- Arkada bir yapay zekâ modeli çalışacak.
+- Uyan araçlar kopyalanabilecek.
+
+## Nasıl çalışacak (önerilen yapı)
+```
+[ParçaLink.exe]  --(OEM kodu / "Caddy motor triger")-->  [ParçaLink sunucusu]
+                                                            |-- arama motoru servisi (web sonuçları)
+                                                            |-- yapay zekâ: sayfalardan araç ve kod bilgisini çıkarır
+                                                            |-- araç listesiyle eşleştirme (motor kodu, yıllar)
+[ParçaLink.exe]  <--(uyan araçlar + her birinin kaynağı + güven derecesi)--
+```
+- **Neden arada sunucu var:** Arama ve yapay zekâ servislerinin anahtarları (ücretli) exe'nin içine konursa
+  programı alan herkes onları çıkarabilir. Anahtarlar sadece sunucuda durur; exe sunucuya sorar. Lisans
+  (hangi bilgisayar kullanabilir) da sunucuda kontrol edilir.
+- **Doğruluk:** İnternetteki bilgi her zaman doğru değildir, yapay zekâ da hata yapabilir. Bu yüzden her araç
+  satırında **kaynağı** (hangi siteden geldiği) ve **güven derecesi** gösterilir; birden fazla bağımsız kaynakta
+  geçen eşleşme "doğrulandı", tek kaynakta geçen "kontrol edin" diye işaretlenir. Program "kesin uyar" demez.
+- **Önbellek:** Bir kez bulunan OEM kodu sunucuda saklanır; aynı kod tekrar arandığında hızlı ve ücretsiz gelir.
+
+## Riskler ve dikkat
+1. **Araç listesinin doğruluğu:** Arac_Listesi.xlsx'in bir kısmı Claude'un hafızasından, doğrulanmamış.
+   Ticari satıştan önce kontrol edilmeli.
+2. **Veri hakları:** Ticari satışta kullanılan verinin (araç listesi, arama sonuçlarından alınan bilgiler) izinli
+   olması gerekir. Sitelerin içeriği toplu kopyalanıp satılamaz; sonuçlar kaynak gösterilerek, arama anında
+   özetlenmeli. TecDoc gibi lisanslı kaynak en sağlam yol. Satış öncesi hukukçuya danışılmalı.
+3. **Maliyet:** Arama servisi ve yapay zekâ arama başına ücretli. Önbellek maliyeti düşürür. Satış fiyatı buna göre
+   belirlenir.
+
+## Aşamalar
+1. **Doğruluk denemesi (exe'den önce):** Kullanıcının uyumunu bildiği 10 gerçek OEM kodu ile sistem denenir;
+   doğru, yanlış, eksik sayılır. Sonuç iyi değilse yöntem değişir. Bu aşamada exe yok, sadece deneme.
+2. **Sunucu:** arama + yapay zekâ + araç listesi eşleştirmesi + önbellek.
+3. **Masaüstü program (.exe):** arama kutusu, sonuç tablosu, kaynak ve güven derecesi, "Kopyala" tuşu.
+   GitHub'ın Windows makinesinde derlenir.
+4. **Ticari hazırlık:** lisans ve bilgisayar sınırı, güncelleme, kullanım sözleşmesi.
+
+## Açık sorular
+1. Doğruluk denemesi için uyumunu kesin bildiğiniz **10 OEM kodu** ve uyan araçları.
+2. Sunucu nerede olacak? (Kartal için alınacak hosting ayrı projedir; ParçaLink için ayrı karar.)
+3. Arama servisi ve yapay zekâ hesapları kullanıcı adına açılacak; anahtarları sadece kullanıcı sunucuya girer.
 
 ## Yapılanlar
 - 1 Kasım 2026: Depo açıldı (gizli), kurallar ve plan yazıldı.
+- 1 Kasım 2026: Kullanıcı cevapları işlendi, yapı ve aşamalar yazıldı.
