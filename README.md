@@ -3,7 +3,13 @@
 Windows masaüstü programı (.exe). Parça kodu yazılır, program o parçanın hangi araçlara uyduğunu gösterir
 (marka, model, kasa, motor kodu, yıllar).
 
-Durum: **sürüm 0.2, deneme.** İnternet, ödeme veya API anahtarı gerekmez.
+Durum: **sürüm 0.3, deneme.** Ek ödeme veya API anahtarı gerekmez.
+
+**İnternet araması:** Bilgisayarda Claude Code kurulu ve Claude aboneliğiyle giriş yapılmışsa, kayıtlı olmayan kod
+aranınca program arkada Claude Code'u çalıştırır (sadece internet arama / sayfa okuma araçları açık), bulunan motor
+kodlarını araç listesiyle birleştirir. Kurulum: PowerShell'de `irm https://claude.ai/install.ps1 | iex`, sonra
+`& "$env:USERPROFILE\.local\bin\claude.exe"` ile bir kez açıp "Claude account with subscription" ile giriş.
+Aboneliğin kullanım hakkından düşer; programı başkalarına satarken her kullanıcının kendi Claude hesabı gerekir.
 
 ## Nasıl çalışır
 - OEM kodu yazılır. **Kayıtlıysa** (yeşil) uyan araçlar kesin gelir: marka, model, kasa, hacim, motor kodu,

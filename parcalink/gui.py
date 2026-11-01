@@ -3,20 +3,22 @@ import sys
 import webbrowser
 from urllib.parse import quote_plus
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QObject, QThread, Qt, Signal
 from PySide6.QtGui import QAction, QColor, QGuiApplication
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QDialog, QDialogButtonBox, QFileDialog, QHBoxLayout,
                                QHeaderView, QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton, QSpinBox,
-                               QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget)
+                               QTableWidget, QTableWidgetItem, QTextBrowser, QVBoxLayout, QWidget)
 
-from . import ayarlar, kurallar
-from .birlestir import (KAYITLI, METIN_SUTUNLARI, SUTUNLAR, birlestir, excel_satiri, kayitli_satirlar,
-                        kopyala_metni, satirdan_arac, tahmin_satirlari)
+from . import ayarlar, claude_arama, kurallar
+from .birlestir import (CLAUDE_COK, KAYITLI, METIN_SUTUNLARI, SUTUNLAR, birlestir, claude_satirlari, excel_satiri,
+                        kaynak_adresleri, kayitli_satirlar, kopyala_metni, satirdan_arac, tahmin_satirlari)
 from .depo import Depo
 from .veri import AracListesi
 
-SURUM = "0.2"
-RENK_KAYITLI, RENK_TAHMIN = "#e5f4e4", "#f9eeda"
+SURUM = "0.3"
+RENK = {KAYITLI: "#e5f4e4", CLAUDE_COK: "#e7f1fb"}
+RENK_DIGER = "#f9eeda"
+INTERNET_METIN = ["OEM kodu", "Açıklama", "Araçlar", "Motor", "Kaynak"]
 
 
 def tabloya_yaz(tablo, sutunlar, satirlar, isaret=False):
@@ -35,11 +37,31 @@ def tabloya_yaz(tablo, sutunlar, satirlar, isaret=False):
             it = QTableWidgetItem(str(r.get(c, "") or ""))
             it.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
             if r.get("Durum"):
-                it.setBackground(QColor(RENK_KAYITLI if r["Durum"] == KAYITLI else RENK_TAHMIN))
+                it.setBackground(QColor(RENK.get(r["Durum"], RENK_DIGER)))
             tablo.setItem(i, j + (1 if isaret else 0), it)
     tablo.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
     tablo.horizontalHeader().setStretchLastSection(True)
     tablo.setSortingEnabled(not isaret)
+
+
+class Isci(QObject):
+    """Claude Code aramasını arka planda çalıştırır (pencere donmasın)."""
+    bitti = Signal(object)
+    hata = Signal(str)
+
+    def __init__(self, tur, sorgu, ipucu=None):
+        super().__init__()
+        self.tur, self.sorgu, self.ipucu = tur, sorgu, ipucu
+
+    def calis(self):
+        try:
+            veri = (claude_arama.oem_ara(self.sorgu, self.ipucu) if self.tur == "kod"
+                    else claude_arama.metin_ara(self.sorgu))
+            self.bitti.emit(veri)
+        except (claude_arama.AramaHatasi, claude_arama.ClaudeYok) as e:
+            self.hata.emit(str(e))
+        except Exception as e:  # beklenmeyen hata programı kapatmasın
+            self.hata.emit(f"Beklenmeyen hata: {e}")
 
 
 class KayitPenceresi(QDialog):
@@ -109,7 +131,7 @@ class KayitPenceresi(QDialog):
         if mevcut:
             self.ekle([dict(r, _secili=True) for r in kayitli_satirlar(mevcut)])
         elif oneriler:
-            self.ekle([dict(r, _secili=False) for r in oneriler])
+            self.ekle([dict(r, _secili=r.get("Durum") == CLAUDE_COK) for r in oneriler])
 
     def _isaretler(self):
         for i, r in enumerate(self.adaylar):
@@ -171,6 +193,8 @@ class Pencere(QMainWindow):
         self.liste = AracListesi()
         self.depo = depo or Depo(ayarlar.depo_yolu())
         self.son = None
+        self.thread = None
+        self.claude_var = claude_arama.claude_yolu() is not None
 
         orta = QWidget()
         y = QVBoxLayout(orta)
@@ -182,8 +206,13 @@ class Pencere(QMainWindow):
         b = QPushButton("Ara")
         b.setMinimumHeight(38)
         b.clicked.connect(self.ara)
+        self.internet_d = QPushButton("İnternetten ara (Claude)")
+        self.internet_d.setMinimumHeight(38)
+        self.internet_d.setToolTip("Bilgisayardaki Claude Code ile internette arar (30–90 sn)")
+        self.internet_d.clicked.connect(self.internetten)
         ust.addWidget(self.kutu, 1)
         ust.addWidget(b)
+        ust.addWidget(self.internet_d)
         y.addLayout(ust)
 
         self.bilgi = QLabel("Bir OEM kodu yazıp Ara'ya basın. Kayıtlı kodlar kesin, kayıtsız kodlar tahmin olarak gelir.")
@@ -196,6 +225,10 @@ class Pencere(QMainWindow):
         self.tablo.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tablo.cellDoubleClicked.connect(self.cift_tik)
         y.addWidget(self.tablo, 1)
+        self.kaynaklar = QTextBrowser()
+        self.kaynaklar.setOpenExternalLinks(True)
+        self.kaynaklar.setMaximumHeight(110)
+        y.addWidget(self.kaynaklar)
 
         alt = QHBoxLayout()
         self.kaydet_d = QPushButton("Kaydet / düzenle")
@@ -216,7 +249,8 @@ class Pencere(QMainWindow):
         alt.addWidget(d1)
         alt.addWidget(d2)
         y.addLayout(alt)
-        y.addWidget(QLabel("Yeşil = kayıtlı (sizin onayınızla). Sarı = kodun başından tahmin, ETKA'dan kontrol edip kaydedin."))
+        y.addWidget(QLabel("Yeşil = kayıtlı (sizin onayınızla). Mavi = internette 2+ kaynakta bulundu. "
+                           "Sarı = tahmin / tek kaynak, ETKA'dan kontrol edin. Doğru olanları Kaydet ile kaydedin."))
         self.setCentralWidget(orta)
         kop = QAction("Kopyala", self)
         kop.setShortcut("Ctrl+C")
@@ -225,7 +259,8 @@ class Pencere(QMainWindow):
         self.durum()
 
     def durum(self, ek=""):
-        self.statusBar().showMessage(f"Araç listesi: {len(self.liste.satirlar)} satır. Kayıtlı parça: {self.depo.sayi()}."
+        cl = "Claude Code bulundu." if self.claude_var else "Claude Code bulunamadı (internet araması kapalı)."
+        self.statusBar().showMessage(f"Araç listesi: {len(self.liste.satirlar)} satır. Kayıtlı parça: {self.depo.sayi()}. {cl}"
                                      + (f" {ek}" if ek else ""))
 
     # ---- arama ----
@@ -242,6 +277,9 @@ class Pencere(QMainWindow):
             self.bilgi.setText(f"“{sorgu}” için kayıtlı parçalarda {len(satirlar)} sonuç. Bir koda çift tıklayınca açılır."
                                if satirlar else f"“{sorgu}” kayıtlı parçalarda bulunamadı. OEM kodunu biliyorsanız kodla arayın.")
             self.kaydet_d.setEnabled(False)
+            self.kaynaklar.clear()
+            if not satirlar and self.claude_var:
+                self.internetten()
 
     def kod_goster(self, kod):
         self.kaydet_d.setEnabled(True)
@@ -261,6 +299,8 @@ class Pencere(QMainWindow):
             else:
                 metin += " Kodun başından araç tahmin edilemedi."
             metin += " ETKA'dan kontrol edip <b>Kaydet</b> ile kaydedin."
+            if self.claude_var and self.thread is None:
+                metin += "<br><b>İnternette aranıyor (Claude)…</b> 30–90 saniye sürebilir; bu sırada tahmine bakabilirsiniz."
         if ip["motor_ailesi"]:
             metin += f"<br>Motor ailesi: {ip['motor_ailesi']}."
         if benzer:
@@ -268,7 +308,77 @@ class Pencere(QMainWindow):
         self.son = {"tur": "kod", "kod": kod, "satirlar": satirlar, "sutunlar": SUTUNLAR, "parca": parca}
         tabloya_yaz(self.tablo, SUTUNLAR, satirlar)
         self.bilgi.setText(metin)
+        self.kaynaklar.clear()
         self.durum()
+        if not parca and self.claude_var:
+            self.internetten()
+
+    def internetten(self):
+        if self.thread is not None:
+            return
+        if not self.claude_var:
+            QMessageBox.information(self, "ParçaLink", "Bu bilgisayarda Claude Code bulunamadı. Kurulum için README'ye bakın.")
+            return
+        sorgu = self.kutu.text().strip()
+        if not sorgu:
+            return
+        kod_mu = kurallar.oem_gibi_mi(sorgu)
+        tur, deger = ("kod", kurallar.kod_normal(sorgu)) if kod_mu else ("metin", sorgu)
+        self._bekleyen = (tur, deger)
+        self.internet_d.setEnabled(False)
+        self.internet_d.setText("Aranıyor…")
+        self.statusBar().showMessage("Claude internette arıyor… (30–90 saniye)")
+        self.thread = QThread()
+        self.isci = Isci(tur, deger, kurallar.ipucu(deger) if kod_mu else None)
+        self.isci.moveToThread(self.thread)
+        self.thread.started.connect(self.isci.calis)
+        self.isci.bitti.connect(self.internet_sonuc)
+        self.isci.hata.connect(self.internet_hata)
+        self.isci.bitti.connect(self.thread.quit)
+        self.isci.hata.connect(self.thread.quit)
+        self.thread.finished.connect(self._thread_bitti)
+        self.thread.start()
+
+    def _thread_bitti(self):
+        self.thread.deleteLater()
+        self.thread = None
+        self.internet_d.setEnabled(True)
+        self.internet_d.setText("İnternetten ara (Claude)")
+
+    def internet_hata(self, mesaj):
+        self.statusBar().showMessage("İnternet araması yapılamadı.")
+        QMessageBox.warning(self, "ParçaLink", mesaj)
+
+    def internet_sonuc(self, veri):
+        tur, deger = self._bekleyen
+        adresler = kaynak_adresleri(veri)
+        self.kaynaklar.setHtml("<b>Kaynaklar</b><br>" + "<br>".join(f'<a href="{a}">{a}</a>' for a in adresler)
+                               if adresler else "Kaynak bulunamadı.")
+        if tur == "kod":
+            satirlar = claude_satirlari(veri, self.liste)
+            metin = f"<b>{deger}</b>: {veri.get('parca_adi', '')} – internetten {len(satirlar)} satır."
+            if veri.get("motor_kodlari"):
+                metin += " Motor kodları: " + ", ".join(veri["motor_kodlari"]) + "."
+            if veri.get("esdeger_kodlar"):
+                metin += "<br>Eşdeğer / benzer kodlar: " + ", ".join(veri["esdeger_kodlar"])
+            if veri.get("notlar"):
+                metin += f"<br><i>Not: {veri['notlar'][:600]}</i>"
+            metin += "<br>Doğruysa <b>Kaydet / düzenle</b> ile kaydedin; bir dahaki aramada anında gelir."
+            self.son = {"tur": "kod", "kod": deger, "satirlar": satirlar, "sutunlar": SUTUNLAR,
+                        "parca": self.depo.getir(deger), "ad": veri.get("parca_adi", "")}
+            tabloya_yaz(self.tablo, SUTUNLAR, satirlar)
+            self.kaydet_d.setEnabled(True)
+        else:
+            satirlar = [{"OEM kodu": b.get("oem_kodu", ""), "Açıklama": b.get("aciklama", ""),
+                         "Araçlar": b.get("araclar", ""), "Motor": b.get("motor", ""),
+                         "Kaynak": (b.get("kaynaklar") or [""])[0]} for b in veri.get("sonuclar") or []]
+            metin = f"“{deger}” için internetten {len(satirlar)} OEM kodu. Bir koda çift tıklayınca uyan araçlar açılır."
+            if veri.get("notlar"):
+                metin += f"<br><i>Not: {veri['notlar'][:600]}</i>"
+            self.son = {"tur": "metin", "satirlar": satirlar, "sutunlar": INTERNET_METIN}
+            tabloya_yaz(self.tablo, INTERNET_METIN, satirlar)
+        self.bilgi.setText(metin)
+        self.durum("İnternet araması bitti.")
 
     def cift_tik(self, satir, sutun):
         if self.son and self.son["tur"] == "metin":
@@ -282,6 +392,8 @@ class Pencere(QMainWindow):
             return
         s = self.son
         p = KayitPenceresi(self, self.depo, self.liste, s["kod"], s["parca"], None if s["parca"] else s["satirlar"])
+        if not s["parca"] and s.get("ad"):
+            p.ad.setText(s["ad"])
         if p.exec():
             self.kod_goster(s["kod"])
             self.durum("Kaydedildi.")

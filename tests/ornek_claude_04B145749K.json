@@ -1,0 +1,77 @@
+{
+ "parca_adi": "Intercooler (turbo hava soğutucusu / şarj havası soğutucusu) – VAG OEM 04B145749K",
+ "motor_parcasi": true,
+ "motor_kodlari": [
+  "CUSA",
+  "CUSB",
+  "CUTA",
+  "CYZB"
+ ],
+ "araclar": [
+  {
+   "marka": "Skoda",
+   "model": "Fabia III (NJ3) 1.4 TDI",
+   "yil_bas": 2014,
+   "yil_bit": 2021,
+   "kaynaklar": [
+    "https://www.skoda-parts.com/spare-part/04b145749k-intercooler-skoda-39116.html",
+    "https://www.autodoc.parts/car-parts/intercooler-10493/skoda/fabia/fabia-nj3/108660-1-4-tdi"
+   ]
+  },
+  {
+   "marka": "Skoda",
+   "model": "Rapid 1.4 TDI",
+   "yil_bas": 2014,
+   "yil_bit": 2018,
+   "kaynaklar": [
+    "https://www.skoda-parts.com/spare-part/04b145749k-intercooler-skoda-39116.html",
+    "https://www.ebay.co.uk/itm/146610822301",
+    "https://www.ebay.com/itm/176327491414"
+   ]
+  },
+  {
+   "marka": "Volkswagen",
+   "model": "Polo V 1.4 TDI",
+   "yil_bas": 2014,
+   "yil_bit": 2018,
+   "kaynaklar": [
+    "https://www.ebay.co.uk/itm/286253938547",
+    "https://www.ebay.co.uk/itm/156073089001",
+    "https://www.proxyparts.com/car-parts-stock/information/part-number/04b145749k/part/intercooler/partid/21144815/"
+   ]
+  },
+  {
+   "marka": "Audi",
+   "model": "A1 1.4 TDI",
+   "yil_bas": null,
+   "yil_bit": null,
+   "kaynaklar": [
+    "https://www.autosimpach.cz/intercooler-04b-145-749-k-pr-10329",
+    "https://www.ebay.com/itm/193753224324",
+    "https://www.minayedekparca.com/toledo-2015-polo-audi-a1-skoda-fabia-rapid-seat-ibiza-toledo-1-4-tdi-cusa-cusb-motor-turbo-intercool,7520.html"
+   ]
+  },
+  {
+   "marka": "Seat",
+   "model": "Ibiza 1.4 TDI",
+   "yil_bas": null,
+   "yil_bit": null,
+   "kaynaklar": [
+    "https://www.autosimpach.cz/intercooler-04b-145-749-k-pr-10329",
+    "https://www.ebay.com/itm/193753224324"
+   ]
+  },
+  {
+   "marka": "Seat",
+   "model": "Toledo 1.4 TDI",
+   "yil_bas": 2015,
+   "yil_bit": null,
+   "kaynaklar": [
+    "https://www.autosimpach.cz/intercooler-04b-145-749-k-pr-10329",
+    "https://www.ebay.com/itm/193753224324",
+    "https://www.minayedekparca.com/toledo-2015-polo-audi-a1-skoda-fabia-rapid-seat-ibiza-toledo-1-4-tdi-cusa-cusb-motor-turbo-intercool,7520.html"
+   ]
+  }
+ ],
+ "notlar": "04B145749K bir intercooler. Kaynaklarda bunu Audi/VW için \"charge air cooler\" adıyla listeleyenler var (fixparts-online.com, oemvwshop.com). Parça 3 silindirli 1.4 TDI (1422 cm³) dizel motorlarda kullanılıyor.\n\nDoğrulama konusunda bir uyarı: Sayfaları doğrudan açmaya çalıştım ama proxy her seferinde bağlantıyı reddetti. Aşağıdaki bilgiler arama motorunun gösterdiği başlık ve özetlerden alındı. Satın almadan önce bağlantıları kendiniz açıp kontrol edin.\n\nMotor kodları:\n- CUSA (55 kW), CUSB (66 kW) ve CUTA (77 kW): Škoda yedek parça kataloğunda (skoda-parts.com) ve autosimpach.cz'de geçiyor.\n- CYZB: Yalnızca autoparts24.fr'de geçiyor. Zayıf kanıt sayılmalı.\n\nYıllar:\n- Fabia III 2014-2021: Autodoc sayfa başlığından.\n- Rapid 2014-2018: eBay ilanından.\n- Polo 2014-2018: Polo için birden fazla eBay ilanından (\"14-17\" ve \"14-18\") birleştirildi.\n- Toledo: minayedekparca.com'da \"2015 >\" yazıyor.\n- Audi A1 ve Seat Ibiza: Kaynak özetlerinde kesin yıl bulamadım, bu yüzden boş bıraktım.\n- Bir arama özetinde yıl bilgisi daha vardı (Fabia 2015-2021, Rapid 2013-2021, Toledo 2013-2019, A1 2015-2018, Polo 2017-2018). Ancak hangi siteden geldiği belli olmadığı için listeye almadım.\n\nDiğer kaynaklar: autoparts-24.com, aynı parçanın yerini alan başka bir numaranın kesin olarak doğrulanmadığını belirtiyor. Muadil (yan sanayi) markalar autodoc.parts/car-parts/oem/04b145749k sayfasında listeleniyor: Van Wezel, Nissens, Mahle, NTY, AKS Dasis, Vemo ve Dipasport. Aracınıza uyduğundan emin olmak için şasi numarasıyla (VIN) kontrol edin."
+}

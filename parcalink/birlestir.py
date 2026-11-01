@@ -70,3 +70,59 @@ def kopyala_metni(satirlar, sutunlar=SUTUNLAR):
     out = ["\t".join(sutunlar)]
     out += ["\t".join(str(r.get(s, "")) for s in sutunlar) for r in satirlar]
     return "\n".join(out)
+
+
+CLAUDE_COK = "İnternet – 2+ kaynak"
+CLAUDE_TEK = "İnternet – tek kaynak, kontrol edin"
+MOTORDAN = "Motor kodundan – kontrol edin"
+
+
+def claude_satirlari(veri, liste):
+    """Claude Code cevabı (dict) + araç listesi -> tablo satırları. Motor kodu bulunursa Excel'den tamamlanır."""
+    araclar = veri.get("araclar") or []
+    kodlar = []
+    for k in list(veri.get("motor_kodlari") or []) + [k for a in araclar for k in (a.get("motor_kodlari") or [])]:
+        k = (k or "").strip().upper()
+        if k and k not in kodlar:
+            kodlar.append(k)
+
+    def ayni(a, s):
+        ilk = (a.get("model") or "").split()
+        if not ilk or s.model_adi.lower() != ilk[0].lower():
+            return False
+        ab, ae = a.get("yil_bas") or 0, a.get("yil_bit") or 9999
+        return not s.yil_bit or (s.yil_bas <= ae and ab <= s.yil_bit)
+
+    satirlar, kullanilan = [], set()
+    for kod in kodlar:
+        for s in liste.motor_kodu_ile(kod):
+            eslesen = [i for i, a in enumerate(araclar) if ayni(a, s)]
+            if eslesen:
+                kullanilan.update(eslesen)
+                kaynak = max(len(araclar[i].get("kaynaklar") or []) for i in eslesen)
+                durum = CLAUDE_COK if kaynak >= 2 else CLAUDE_TEK
+            else:
+                durum = MOTORDAN
+            satirlar.append(excel_satiri(s, kod, durum))
+    satirlar = birlestir(satirlar)
+
+    for i, a in enumerate(araclar):  # listede karşılığı olmayan veya motor kodu olmayan araçlar
+        if i in kullanilan:
+            continue
+        satirlar.append({"Marka": a.get("marka", ""), "Model": a.get("model", ""), "Kasa": a.get("kasa", ""),
+                         "Hacim": a.get("hacim", ""), "Motor kodu": ", ".join(a.get("motor_kodlari") or []),
+                         "Beygir": "", "Yakıt": "", "Şanzıman": "", "Yıllar": _yil(a.get("yil_bas"), a.get("yil_bit")),
+                         "Durum": CLAUDE_COK if len(a.get("kaynaklar") or []) >= 2 else CLAUDE_TEK,
+                         "_yil": (a.get("yil_bas"), a.get("yil_bit"))})
+    sira = {CLAUDE_COK: 0, CLAUDE_TEK: 1, MOTORDAN: 2}
+    satirlar.sort(key=lambda r: (sira.get(r["Durum"], 9), r["Marka"], r["Model"], r["Yıllar"]))
+    return satirlar
+
+
+def kaynak_adresleri(veri):
+    out = []
+    for a in veri.get("araclar") or veri.get("sonuclar") or []:
+        for u in a.get("kaynaklar") or []:
+            if u not in out:
+                out.append(u)
+    return out

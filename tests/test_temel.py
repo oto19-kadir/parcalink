@@ -66,6 +66,7 @@ def test_pencere():
     app = QApplication.instance() or QApplication([])
     d = _depo()
     p = gui.Pencere(depo=d)
+    p.claude_var = False  # testte gerçek internet araması yapılmasın
     p.kutu.setText("04B145749K")
     p.ara()
     assert p.tablo.rowCount() == 0 or "kayıtlı değil" in p.bilgi.text()
@@ -85,6 +86,31 @@ def test_pencere():
     p.ara()
     k.grab().save(os.path.join(os.path.dirname(__file__), "..", "docs", "ekran-kayit.png"))
     p.grab().save(os.path.join(os.path.dirname(__file__), "..", "docs", "ekran-tahmin.png"))
+
+
+def test_claude_sonucu():
+    import json
+    from PySide6.QtWidgets import QApplication
+    from parcalink import gui
+    from parcalink.birlestir import CLAUDE_COK, claude_satirlari
+    app = QApplication.instance() or QApplication([])
+    veri = json.load(open(os.path.join(os.path.dirname(__file__), "ornek_claude_04B145749K.json"), encoding="utf-8"))
+    satirlar = claude_satirlari(veri, LISTE)
+    assert any(r["Model"].startswith("Polo") and r["Motor kodu"] == "CUSB" and r["Beygir"] == "90" for r in satirlar)
+    assert all(r["Durum"] == CLAUDE_COK for r in satirlar if r["Hacim"] == "1.4")
+    p = gui.Pencere(depo=_depo())
+    p.claude_var = False
+    p.kutu.setText("04B145749K")
+    p._bekleyen = ("kod", "04B145749K")
+    p.internet_sonuc(veri)
+    assert p.tablo.rowCount() == len(satirlar) and "Intercooler" in p.bilgi.text()
+    p.grab().save(os.path.join(os.path.dirname(__file__), "..", "docs", "ekran-internet.png"))
+
+
+def test_claude_komutu_bulma():
+    from parcalink import claude_arama
+    yol = claude_arama.claude_yolu()
+    assert yol is None or os.path.isfile(yol)
 
 
 if __name__ == "__main__":
