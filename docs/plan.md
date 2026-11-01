@@ -61,4 +61,6 @@ Parça işini kolaylaştıran, ticari olarak satılabilecek Windows masaüstü p
 ## Yapılanlar
 - 1 Kasım 2026: Depo açıldı (gizli), kurallar ve plan yazıldı.
 - 1 Kasım 2026: Kullanıcı cevapları işlendi, yapı ve aşamalar yazıldı.
+- 1 Kasım 2026: Kullanıcı: "motor" = hacim (1.4/1.6/2.0); motor kodu bulununca hacim, beygir, araçlar Excel'den çekilir. Excel verisine güveniliyor; kullanıcı şüpheli sonucu ETKA'dan kontrol eder. TecDoc'a gerek görülmedi.
+- 1 Kasım 2026: Sürüm 0.1 yazıldı: PySide6 pencere, Claude (claude-opus-5-5) + web arama, Excel eşleştirme, güven renkleri, kopyalama, 30 gün önbellek, exe GitHub Actions'ta (Windows). İlk sürümde API anahtarı kullanıcının bilgisayarında saklanır; ticari satışta sunucuya taşınacak.
 - 1 Kasım 2026: Doğruluk denemesi 1 (7 kod): model %73, motor kodu %17 – ayrıntı `docs/test-1.md`.

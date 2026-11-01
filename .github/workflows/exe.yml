@@ -1,0 +1,31 @@
+name: ParçaLink exe
+
+on:
+  push:
+    branches: [main]
+    paths: ["parcalink/**", "main.py", "veri/**", "requirements.txt", ".github/workflows/exe.yml"]
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Paketler
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller pytest
+      - name: Testler
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m pytest -q tests
+      - name: Exe
+        run: pyinstaller --noconfirm --onefile --windowed --name ParcaLink --add-data "veri/Arac_Listesi.xlsx;veri" main.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ParcaLink-exe
+          path: dist/ParcaLink.exe
+          retention-days: 30
